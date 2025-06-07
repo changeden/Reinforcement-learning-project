@@ -1,0 +1,25 @@
+# Chip Generating
+class ChipGenerating:
+  def __init__(self, vout_u=3.0, vout_sigma=0.2, leakage_u=10, leakage_sigma=2, delay_u=3.5, delay_sigma=0.5): #the users can change these parameters to specific ones as their standard for good chip(these parameters are just what we found during research)
+    #output voltage
+    self.vout_u = vout_u
+    self.vout_sigma = vout_sigma
+    #leakage current
+    self.leakage_u = leakage_u
+    self.leakage_sigma = leakage_sigma
+    #propagation delay
+    self.delay_u = delay_u
+    self.delay_sigma = delay_sigma
+
+  def generate_chip(self):
+    #define parameters
+    vout = np.random.normal(self.vout_u, self.vout_sigma)
+    leakage = np.random.normal(self.leakage_u, self.leakage_sigma)
+    delay = np.random.normal(self.delay_u, self.delay_sigma)
+
+    label = int((2.8 <= vout <= 3.3) and (leakage < 20) and (delay < 5)) #meet all requrements to be classified as a godd chip
+
+    return{"vout": vout, "leakage": leakage, "delay": delay, "label": label}
+
+  def generate_batch(self, n=100):
+    return [self.generate_chip() for _ in range(n)]
