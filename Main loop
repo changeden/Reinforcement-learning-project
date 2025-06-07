@@ -70,3 +70,12 @@ for episode in range(episodes):
 
   if episode % 100 == 0 or episode == 0:
     print(f"Episode {episode}")
+
+
+
+============================
+
+print(drift_values_first)
+print(recalibration_timesteps_first)
+print(drift_values_last)
+print(recalibration_timesteps_last)
