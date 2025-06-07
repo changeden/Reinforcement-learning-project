@@ -1,0 +1,39 @@
+def simulate_ATE_threshold(chip, threshold=50):
+    env = ATEEnv()
+    state = env.reset()
+    done = False
+    step = 0
+    max_step = 5000
+
+    while not done and step < max_step:
+        if env.drift > threshold:
+          action = 1 #recalibrate if the drift exceeds the threshold
+        else:
+          action = 0
+
+        next_state, reward, done, recalibrated = env.rules(action, chip)
+        state = next_state
+        step += 1
+
+    #apply drift noise to the chip
+    drift = max(env.drift, 0)
+    vout = chip["vout"] + np.random.normal(0, drift * 0.002)
+    leakage = chip["leakage"] + np.random.normal(0, drift * 0.0002)
+    delay = chip["delay"] + np.random.normal(0, drift * 0.0002)
+
+    predicted_label = int((2.8 <= vout <= 3.3) and (leakage < 20) and (delay < 5))
+    return predicted_label
+
+true_labels = []
+predicted_labels = []
+
+for chip in tqdm(batch, desc="Evaluating with threshold based recalibration"):
+    true_labels.append(chip["label"])
+    predicted_labels.append(simulate_ATE_threshold(chip))
+
+#result
+print("Confusion Matrix:")
+print(confusion_matrix(true_labels, predicted_labels))
+
+print("\nClassification Report:")
+print(classification_report(true_labels, predicted_labels, target_names=["Bad", "Good"]))
