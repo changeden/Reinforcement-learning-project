@@ -1,0 +1,53 @@
+
+# Plot first and last result
+
+import matplotlib.pyplot as plt
+
+timesteps = list(range(len(drift_values_first)))
+
+plt.figure(figsize=(12, 6))
+plt.plot(timesteps, drift_values_first, label='Drift')
+
+for t in recalibration_timesteps_first:
+    d = drift_values_first[t-1]
+    if d < 50:
+        color = 'green' #too Early
+    elif 50 <= d < 100:
+        color = 'blue' #on Time
+    else:
+        color = 'red' #too Late
+    plt.axvline(x=t, color=color, linestyle='--', alpha=0.5)
+
+plt.xlabel('Step')
+plt.ylabel('Value')
+plt.title('Drift Over Time with Recalibration Events (first episode)')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+-----------------------------------------
+
+import matplotlib.pyplot as plt
+
+timesteps = list(range(len(drift_values_last)))
+
+plt.figure(figsize=(12, 6))
+plt.plot(timesteps, drift_values_last, label='Drift')
+
+for t in recalibration_timesteps_last:
+    d = drift_values_last[t-1]
+    if d < 50:
+        color = 'green' #too Early
+    elif 50 <= d < 100:
+        color = 'blue' #on Time
+    else:
+        color = 'red' #too Late
+    plt.axvline(x=t, color=color, linestyle='--', alpha=0.5)
+
+plt.xlabel('Step')
+plt.ylabel('Value')
+plt.title('Drift Over Time with Recalibration Events (last episode)')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
