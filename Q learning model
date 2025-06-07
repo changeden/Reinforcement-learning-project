@@ -1,0 +1,41 @@
+# Q learning model
+
+from tqdm import tqdm
+def simulate_ATE(chip, Q1, Q2):
+    env = ATEEnv()
+    state = (env.reset(),)
+    done = False
+    step = 0
+    max_step = 5000
+
+    while not done and step < max_step:
+        action = np.argmax([get_q(Q1, state, a) + get_q(Q2, state, a) for a in [0, 1]])
+        next_state, reward, done ,recalibrated= env.rules(action, chip)
+        state = (next_state,)
+        step += 1
+
+    drift = max(env.drift, 0) #ensure the drift is larger than zero
+
+    #apply noise that caused by ATE drift
+    vout = chip["vout"] + np.random.normal(0, drift * 0.002)
+    leakage = chip["leakage"] + np.random.normal(0, drift * 0.0002)
+    delay = chip["delay"] + np.random.normal(0, drift * 0.0002)
+
+    predicted_label = int((2.8 <= vout <= 3.3) and (leakage < 20) and (delay < 5)) #predict as good chip only if it meets all requirements
+    return predicted_label
+
+from sklearn.metrics import confusion_matrix, classification_report
+
+true_labels = []
+predicted_labels = []
+
+for chip in tqdm(batch, desc="Evaluating chips"):
+    true_labels.append(chip["label"])
+    predicted_labels.append(simulate_ATE(chip, Q1, Q2))
+
+#result
+print("Confusion Matrix:")
+print(confusion_matrix(true_labels, predicted_labels))
+
+print("\nClassification Report:")
+print(classification_report(true_labels, predicted_labels, target_names=["Bad", "Good"]))
