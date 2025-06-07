@@ -1,0 +1,72 @@
+# Main loop
+
+
+import random
+#initialize two dictionaries to store Q values for each (s, a) pair
+Q1 = {}
+Q2 = {}
+
+def get_q(Q, state, action):
+  return Q.get((state, action), 0) #function to get Q values for designated (s, a) pair from either Q dictionaries, if the (s, a) pair exists return (s, a), if not, return 0
+
+def select_action(state, epsilon):
+  if np.random.rand() < epsilon:
+    return random.choice([0, 1]) #exploration(randomly select to keep testing or recalibrate)
+  else:
+    q1 = [get_q(Q1, state, a) for a in [0, 1]] #a list of Q values for both actions from Q1
+    q2 = [get_q(Q2, state, a) for a in [0, 1]] #a list of Q values for both actions from Q2
+    q_sum = [q1[i] + q2[i] for i in range(2)] # add up Q value in q1 and q2 index-wise
+    return int(np.argmax(q_sum)) #exploitation based on double Q-learning(select the action that has larger sum of Q values form two dictionaries)
+
+alpha = 0.1
+gamma = 1
+epsilon = 0.3
+episodes = 100000
+
+generator = ChipGenerating()
+batch = generator.generate_batch(n=10000)
+
+drift_values_first = [] #store the drift value at each step of the first episode for the plot later
+recalibration_timesteps_first = [] #store all steps which the agent select to recalibrate for first episode
+drift_values_last = [] #store the drift value at each step of the last episode for the plot later
+recalibration_timesteps_last = [] #store all stpeps which the agent select to reclaibrate for last episode
+
+for episode in range(episodes):
+  env = ATEEnv()
+  state = (env.reset(),)
+  done = False
+  step = 0
+  max_step = 500
+  if episode == episodes - 1:
+    epsilon = 0 #set the epsilon for the last episode to zero so that the agent follows what it has learned and we can see if it makes sense
+
+  while not done and step < max_step: #set a max step count, otherwise, if the agent has learned when to recalibrate, the episode is not gonna end
+    chip = random.choice(batch) #select random chip in the batch to test
+    action = select_action(state, epsilon)
+    next_state_list, reward, done, recalibrated = env.rules(action, chip)
+    next_state = (next_state_list,)
+
+    if episode == episodes - 1: #record last episode
+      drift_values_last.append(env.drift)
+      if recalibrated:
+        recalibration_timesteps_last.append(step)
+    elif episode == 0: #record first episode
+      drift_values_first.append(env.drift)
+      if recalibrated:
+        recalibration_timesteps_first.append(step)
+
+    if random.random() < 0.5: #probability of 0.5 for both Q dictionaries to be updated
+      best_action = np.argmax([get_q(Q1, next_state, a) for a in [0, 1]])
+      target = reward +gamma * get_q(Q2, next_state, best_action)
+      Q1[(state, action)] = get_q(Q1, state, action) + alpha * (target - get_q(Q1, state, action))
+    else:
+      best_action = np.argmax([get_q(Q2, next_state, a) for a in [0, 1]])
+      target = reward +gamma * get_q(Q1, next_state, best_action)
+      Q2[(state, action)] = get_q(Q2, state, action) + alpha * (target - get_q(Q2, state, action))
+
+    state = next_state
+    step += 1
+
+
+  if episode % 100 == 0 or episode == 0:
+    print(f"Episode {episode}")
