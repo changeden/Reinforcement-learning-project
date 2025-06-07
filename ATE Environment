@@ -1,0 +1,63 @@
+
+# ATE Environment
+import numpy as np
+
+class ATEEnv:
+  def __init__(self):
+    self.reset() #reset at the start and also after each recalibration
+
+  def reset(self, age=5):
+    self.temperature = round(np.random.uniform(20, 30), 1) # temperature(random floating point Celsius degree between 20 and 30)
+    self.humidity = round(np.random.uniform(30, 60), 1) # realtive humidity(RH)(random floating point % between 30 and 60)
+    self.age = age #assume the age is fixed and we can revise it as an input when calling reset
+    self.drift = 0 #µV initial drift
+    self.p_contamination = 0.0002 #probability of contamination
+    self.time = 0 #initialize chip amount to zero
+    self.done = False
+    return self.get_state()
+
+  def get_state(self):
+    drift_bin = int(self.drift // 5) #so we don't get a large number of states that needs a lot of epochs to update all of them
+    return drift_bin
+
+  def rules(self, action, chip=None):
+      reward = 0 #initialize reward
+      recalibrated = False
+
+      if self.time >= 2000: #2000 chips
+        self.done = True
+        reward -= 5 #running too long without recalibration
+        return self.get_state(), reward, self.done, recalibrated
+
+      if action == 1: #stop and recalibrate
+        reward -= 1 #small negative reward for recalibration
+        if 50< self.drift <100:
+          reward += 10 #positive reward for recalibrating on time
+        else:
+          reward -= 20 #otherwise, negative reward
+
+        self.reset() #recalibrate = reset
+        recalibrated = True
+        return self.get_state(), reward, self.done, recalibrated
+      else: #conitnue testing
+        self.time += 1 #add 1 chip count
+
+      drifting = 0.05 * self.temperature + 0.03 * self.humidity + 0.5 * self.age #compute drifting level based on temperature, humidity, and age(the users can revise this line to the specific equation for their equipment)
+
+      if np.random.rand() < self.p_contamination:
+        drifting += np.random.uniform(10, 30) #random spike in drift due to contamination
+
+      self.drift += np.random.normal(drifting * 0.5, 2) #add noise to form the final drift
+
+      if self.drift > 100: #failure condition
+            reward = -20
+            self.done = True
+
+      if chip is not None:
+        predicted_label = int((2.8 <= chip["vout"] <= 3.3) and (chip["leakage"] < 20) and (chip["delay"] < 5)) #consider as a good chip only if it meets all requirements
+        if predicted_label == chip["label"]:
+          reward += 1 #positive reward for classifying correctly
+        else:
+          reward -=1 #otherwise, negative reward
+
+      return self.get_state(), reward, self.done, recalibrated
